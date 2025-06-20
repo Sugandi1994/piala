@@ -1,10 +1,11 @@
+// routes/index.js (or wherever your provided file is)
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 const PizZip = require('pizzip');
-const Docxtemplater = require('docxtemplater'); // Pastikan ini tidak dikomentari jika fitur export Word masih diinginkan
+const Docxtemplater = require('docxtemplater');
 const multer = require('multer');
 
 let pesertaData = [];
@@ -20,7 +21,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   fileFilter: function (req, file, cb) {
     if (!file.originalname.toLowerCase().endsWith('.png')) {
@@ -84,7 +85,7 @@ const importExcel = (req, res) => {
     kegiatan: row['Kegiatan'] || '',
     peringkat: row['Peringkat'] || ''
   }));
-  fs.unlink(req.file.path, (err) => { // Gunakan fs.unlink asinkron
+  fs.unlink(req.file.path, (err) => {
     if (err) console.error('Error deleting uploaded Excel file:', err);
   });
   console.log('Peserta data imported from Excel:', pesertaData);
@@ -105,18 +106,16 @@ const uploadBackgrounds = (req, res) => {
   }
   console.log('Background files uploaded successfully:', req.files.map(f => f.originalname));
   res.redirect('/');
-});
+};
 
-// ---- FUNGSI UNTUK DOWNLOAD ZIP LANGSUNG ----
 router.get('/download-zip', (req, res) => {
   if (pesertaData.length === 0) {
     return res.status(400).send('Tidak ada data peserta untuk dibuatkan ZIP.');
   }
 
   const zip = new PizZip();
-  const folderName = "stiker-data"; // Nama folder utama di dalam ZIP
+  const folderName = "stiker-data";
 
-  // Tambahkan setiap peserta sebagai file teks sederhana dalam folder di ZIP
   pesertaData.forEach((p, index) => {
     const fileContent = `Nama: ${p.nama}\nLomba: ${p.lomba}\nKegiatan: ${p.kegiatan}\nPeringkat: ${p.peringkat}`;
     zip.file(`${folderName}/peserta_${index + 1}.txt`, fileContent);
@@ -135,7 +134,6 @@ router.get('/download-zip', (req, res) => {
   }
 });
 
-// ---- FUNGSI EXPORT WORD (sudah dengan perbaikan error handling) ----
 router.post('/export', (req, res) => {
   const templatePath = path.resolve(__dirname, '../template.docx');
   console.log('Attempting to load template from:', templatePath);
@@ -155,16 +153,13 @@ router.post('/export', (req, res) => {
   try {
     doc.render();
   } catch (err) {
-    // Tangani berbagai jenis error docxtemplater secara spesifik jika memungkinkan
     console.error('Error generating Word file:', err);
-    // Jika err adalah objek docxtemplater.DocxtemplaterError
     if (err.properties && err.properties.errors && err.properties.errors.length > 0) {
       err.properties.errors.forEach(e => {
         console.error(`Docxtemplater Sub-error: ${e.message} (Part: ${e.properties.part})`);
       });
       return res.status(500).send('Error generating Word file. Check server logs for detailed Docxtemplater errors. Message: ' + err.message);
     }
-    // Jika error umum
     const errorString = JSON.stringify(err, Object.getOwnPropertyNames(err));
     console.error('Detailed Error Object:', errorString);
     return res.status(500).send('Error generating Word file. Check server logs for details. Message: ' + err.message);
@@ -179,12 +174,10 @@ router.post('/export', (req, res) => {
   res.download(outputFilePath, 'stiker-piala.docx', (err) => {
     if (err) {
       console.error('Error during file download:', err);
-      // Kirim status error jika unduhan gagal
-      if (!res.headersSent) { // Pastikan header belum dikirim untuk menghindari 'Error: Can't set headers after they are sent to the client'
+      if (!res.headersSent) {
         res.status(500).send('Error downloading file.');
       }
     }
-    // Hapus file setelah berhasil diunduh atau terjadi error unduh
     fs.unlink(outputFilePath, (unlinkErr) => {
       if (unlinkErr) console.error('Error deleting output file:', unlinkErr);
     });
@@ -193,7 +186,6 @@ router.post('/export', (req, res) => {
 
 router.get('/reset-data', (req, res) => {
   pesertaData = [];
-  // Delete all user-uploaded background images except the default bg.png
   const bgDir = path.join(__dirname, '../public/bg');
   fs.readdir(bgDir, (err, files) => {
     if (err) {
@@ -214,8 +206,3 @@ router.get('/reset-data', (req, res) => {
 });
 
 module.exports = { router, importExcel, uploadBackgrounds };
-=======
-  }));
-  console.log('Peserta data updated:', pesertaData);
-  res.redirect('/');
-});
