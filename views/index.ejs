@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Stiker Piala</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Styling tambahan untuk visualisasi */
+    .form-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+    .form-section h2 {
+      margin-top: 0;
+      color: #333;
+    }
+    .form-row input {
+      width: 150px;
+      margin-right: 10px;
+    }
+    #form-area div {
+      margin-bottom: 10px;
+    }
+    .sticker-preview-container {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Aplikasi Cetak Stiker Piala</h1>
+
+    <div class="form-section">
+      <h2>Import Data Peserta dari Excel</h2>
+      <form id="titleForm" action="/set-title" method="POST" style="margin-bottom: 15px;">
+        <label for="titleInput">Judul Stiker (contoh: PERINGKAT): </label>
+        <input type="text" id="titleInput" name="title" value="<%- stickerTitle %>" required>
+        <button type="submit">Set Judul</button>
+      </form>
+      <form id="backgroundForm" action="/set-background" method="POST" enctype="multipart/form-data" style="margin-bottom: 15px;">
+        <label for="backgroundFile">Upload Background Stiker (PNG): </label>
+        <input type="file" id="backgroundFile" name="backgroundFile" accept=".png" required>
+        <button type="submit">Upload Background</button>
+      </form>
+      <form id="clearBackgroundForm" action="/clear-background" method="POST" style="display: inline;">
+        <button type="submit">Buat Stiker Polos</button>
+      </form>
+      <form id="resetBackgroundForm" action="/reset-background" method="POST" style="display: inline; margin-left: 10px;">
+        <button type="submit">Reset Background Default</button>
+      </form>
+      <form action="/import-excel" method="POST" enctype="multipart/form-data">
+        <input type="file" name="excel" accept=".xlsx,.xls" required>
+        <button type="submit">Import Excel</button>
+      </form>
+    </div>
+
+    <div class="form-section">
+      <h2>Masukkan Data Manual atau Preview</h2>
+      <form action="/preview" method="POST">
+        <div id="form-area">
+          <% if (peserta.length === 0) { %>
+            <div class="form-row">
+              <input name="nama[]" placeholder="Nama Peserta" />
+              <input name="lomba[]" placeholder="Jenis Lomba" />
+              <input name="kegiatan[]" placeholder="Kegiatan" />
+              <input name="peringkat[]" placeholder="Peringkat (cth: 1, 2, 3)" />
+            </div>
+          <% } else { %>
+            <% peserta.forEach(function(p) { %>
+              <div class="form-row">
+                <input name="nama[]" value="<%= p.nama %>" placeholder="Nama Peserta" />
+                <input name="lomba[]" value="<%= p.lomba %>" placeholder="Jenis Lomba" />
+                <input name="kegiatan[]" value="<%= p.kegiatan %>" placeholder="Kegiatan" />
+                <input name="peringkat[]" value="<%= p.peringkat %>" placeholder="Peringkat (cth: 1, 2, 3)" />
+              </div>
+            <% }); %>
+          <% } %>
+        </div>
+        <button type="button" onclick="tambahBaris()">+ Tambah Peserta</button>
+        <button type="submit">Preview / Update Data</button>
+        <button type="button" onclick="resetFormData()">Reset Data</button>
+      </form>
+
+      <script>
+        function resetFormData() {
+          // Redirect to /reset-data to clear server data and reload page
+          window.location.href = '/reset-data';
+        }
+
+        function tambahBaris() {
+          const formArea = document.getElementById('form-area');
+          const div = document.createElement('div');
+          div.className = 'form-row';
+          div.innerHTML = '<input name="nama[]" placeholder="Nama Peserta" /> ' +
+                          '<input name="lomba[]" placeholder="Jenis Lomba" /> ' +
+                          '<input name="kegiatan[]" placeholder="Kegiatan" /> ' +
+                          '<input name="peringkat[]" placeholder="Peringkat (cth: 1, 2, 3)" />';
+          formArea.appendChild(div);
+        }
+
+        // Clear form rows if peserta is empty on page load
+        window.addEventListener('DOMContentLoaded', () => {
+          const pesertaLength = <%- JSON.stringify(peserta.length) %> || 0;
+          if (pesertaLength === 0) {
+            const formArea = document.getElementById('form-area');
+            while (formArea.firstChild) {
+              formArea.removeChild(formArea.firstChild);
+            }
+            const div = document.createElement('div');
+            div.className = 'form-row';
+            div.innerHTML = '<input name="nama[]" placeholder="Nama Peserta" /> ' +
+                            '<input name="lomba[]" placeholder="Jenis Lomba" /> ' +
+                            '<input name="kegiatan[]" placeholder="Kegiatan" /> ' +
+                            '<input name="peringkat[]" placeholder="Peringkat (cth: 1, 2, 3)" />';
+            formArea.appendChild(div);
+          }
+        });
+      </script>
+    </div>
+
+    <div class="form-section">
+      <h2>Opsi Unduh / Cetak</h2>
+      <p>Pilih format unduhan atau langsung cetak stiker.</p>
+      <form action="/export" method="POST" style="display: inline-block; margin-right: 10px;">
+        <button type="submit">Export ke Word</button>
+      </form>
+      <a href="/download-zip" download="stiker-data.zip">
+        <button type="button">Download Data (ZIP)</button>
+      </a>
+      <button type="button" onclick="window.print()">Cetak Stiker</button>
+    </div>
+
+    <div class="sticker-preview-container">
+      <h2>Preview Stiker</h2>
+      <div class="sticker-page">
+        <% if (peserta.length === 0) { %>
+          <p>Belum ada data peserta untuk ditampilkan. Silakan import dari Excel atau masukkan secara manual.</p>
+        <% } else { %>
+          <% peserta.forEach(p => { %>
+            <div class="sticker" style="background-image: url('/bg/<%= stickerBackground %>');">
+              <div class="title"><%- stickerTitle %> <%= p.peringkat %></div>
+              <div class="participant"><%= p.nama %></div>
+              <div class="competition"><%= p.lomba %><br><%= p.kegiatan %></div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
